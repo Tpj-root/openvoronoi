@@ -10,7 +10,8 @@
 #include "utility/vd2svg.hpp"
 
 #include <boost/random.hpp>
-#include <boost/timer.hpp>
+#include <boost/timer/timer.hpp>
+//#include <boost/timer.hpp>
 #include <boost/foreach.hpp>
 #include <boost/program_options.hpp>
 
@@ -113,6 +114,7 @@ int main(int argc,char *argv[]) {
     
     
     
+
     std::cout << "Number of random line segments: " << nmax << "\n";
     int bins = (int)sqrt(nmax);
     ovd::VoronoiDiagram* vd = new ovd::VoronoiDiagram(1,10*bins);
@@ -126,39 +128,54 @@ int main(int argc,char *argv[]) {
     
     boost::mt19937 rng(42);
     boost::uniform_01<boost::mt19937> rnd(rng);
-    std::cout << "Waiting for " << nmax << " random line segments..."<< std::flush;
-    boost::timer tmr;
-    std::vector<segment> segs = random_segments(1,nmax); // creante nmax random non-intersecting segments.
-    std::cout << "done in " << tmr.elapsed() << " seconds\n" << std::flush;
+    std::cout << "Waiting for " << nmax << " random line segments..." << std::flush;
+    
+    boost::timer::cpu_timer tmr;
+
+    // Generate segments and time it
+    std::vector<segment> segs = random_segments(1, nmax);
+    auto elapsed = tmr.elapsed();
+    double t_points = elapsed.wall / 1e9;  // timing for segment generation
+    std::cout << "done in " << t_points << " seconds\n" << std::flush;
     std::cout << "number of segs: " << segs.size() << "\n" << std::flush;
-    typedef std::pair<int,int> IdSeg; // the int-handles for a segment
-    typedef std::vector< IdSeg > IdSegments; // all the segments stored in this vector
+
+    typedef std::pair<int,int> IdSeg;
+    typedef std::vector<IdSeg> IdSegments;
     IdSegments segment_ids;
-    
-    tmr.restart();
-    BOOST_FOREACH(segment s, segs ) {
+
+    // Insert point sites timing
+    tmr.start();
+    BOOST_FOREACH(segment s, segs) {
         IdSeg id;
-        id.first = vd->insert_point_site(s.first);   // insert the start-point of the segment
-        id.second = vd->insert_point_site(s.second); // insert the endpoint of the segment.
-        segment_ids.push_back(id); // store the int-handles returned by insert_point_site()
+        id.first = vd->insert_point_site(s.first);
+        id.second = vd->insert_point_site(s.second);
+        segment_ids.push_back(id);
     }
-    double t_points = tmr.elapsed();
-    std::cout << "all point-sites inserted !\n"<< std::flush;
-    // now we insert line-segments
-    tmr.restart();
-    BOOST_FOREACH(IdSeg id, segment_ids ) {
-        vd->insert_line_site(id.first,id.second); // NOTE: arguments are the int-handles we got from VoronoiDiagram::insert_point_site() above!
+    elapsed = tmr.elapsed();
+    t_points = elapsed.wall / 1e9;  // reusing t_points for point insertion time
+
+    std::cout << "all point-sites inserted!\n" << std::flush;
+
+    // Insert line sites timing
+    tmr.start();
+    BOOST_FOREACH(IdSeg id, segment_ids) {
+        vd->insert_line_site(id.first, id.second);
     }
-    double t_lines = tmr.elapsed();
-    std::cout << "all line-sites inserted !\n"<< std::flush;
-    
+    elapsed = tmr.elapsed();
+    double t_lines = elapsed.wall / 1e9;
+
+    std::cout << "all line-sites inserted!\n" << std::flush;
+
     std::cout << "Points: " << t_points << " seconds \n";
     std::cout << "Lines: " << t_lines << " seconds \n";
-    double norm = 2*nmax*log(2*(double)nmax)/log(2.0);
-    std::cout << "Points: " << 1e6*t_points/norm << " us * n*log2(n)\n";
-    std::cout << "Lines: " << 1e6*t_lines/norm << " us * n*log2(n)\n";
+
+    double norm = 2 * nmax * log(2 * (double)nmax) / log(2.0);
+    std::cout << "Points: " << 1e6 * t_points / norm << " us * n*log2(n)\n";
+    std::cout << "Lines: " << 1e6 * t_lines / norm << " us * n*log2(n)\n";
+
     std::cout << vd->print();
     vd2svg("random_segments.svg", vd);
+
     delete vd;
     return 0;
 }

@@ -77,11 +77,11 @@ typedef boost::graph_traits<MachiningGraph>::vertex_iterator   MGVertexItr;
 /// sort-predicate for sorting offset loops by offset distance
 class OffsetLoopCompare {
 public:
-    /// sort predicate
-    bool operator() (OffsetLoop l1, OffsetLoop l2) {
-        return (l1.offset_distance > l2.offset_distance);
+    bool operator()(const OffsetLoop& l1, const OffsetLoop& l2) const {
+        return l1.offset_distance > l2.offset_distance;
     }
 };
+
 
 /// pair offsetloop with the corresponding MachininGraph Vertex
 typedef std::pair<MGVertex,OffsetLoop> VertexOffsetLoop;
